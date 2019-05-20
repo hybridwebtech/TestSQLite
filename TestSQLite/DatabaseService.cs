@@ -12,12 +12,12 @@ namespace TestSQLite
     public class DatabaseService
     {
         private SQLiteConnection _conn;
-        private string _currentUserId;
+        private Guid _currentUserId;
 
-        public DatabaseService(string connectionString, string currentUserId)
+        public DatabaseService(string connectionString, Guid currentUserId)
         {
-            if (string.IsNullOrWhiteSpace(currentUserId)) throw new ArgumentNullException(nameof(connectionString));
-            if (string.IsNullOrWhiteSpace(currentUserId)) throw new ArgumentNullException(nameof(currentUserId));
+            if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
+            if (currentUserId == Guid.Empty) throw new ArgumentNullException(nameof(currentUserId));
 
             _currentUserId = currentUserId;
 
@@ -36,10 +36,87 @@ namespace TestSQLite
             }
         }
 
+        private static string DatabaseDateString(DateTime dateTime)
+        {
+            return dateTime.ToShortDateString() + " " + dateTime.ToShortTimeString();
+        }
+
+        private static string DatabaseGuidString(Guid guid)
+        {
+            return guid.ToString();
+        }
+
+        public User CreateUser(string userName, string userEmail, bool immediateSave)
+        {
+            if (string.IsNullOrWhiteSpace(userName)) throw new ArgumentNullException(nameof(userName));
+            if (string.IsNullOrWhiteSpace(userEmail)) throw new ArgumentNullException(nameof(userEmail));
+
+            string strNow = DatabaseDateString(DateTime.Now);
+
+            var user = new User()
+            {
+                ID = Guid.NewGuid(), Name = userName, Email = userEmail, CreatedOn = DateTime.Now,
+                CreatedBy = _currentUserId, UpdatedOn = DateTime.Now, UpdatedBy = _currentUserId
+            };
+
+            if (immediateSave)
+            {
+                SaveUser(user);
+            }
+
+            return user;
+        }
+
+        public void SaveUser(User user)
+        {
+            if (user == null) throw  new ArgumentNullException(nameof(user));
+            if (user.ID == Guid.Empty) throw new ArgumentOutOfRangeException("User.ID");
+
+            string strNow = DatabaseDateString(DateTime.Now);
+
+            var cmd = _conn.CreateCommand();
+
+            cmd.CommandText = "SELECT COUNT(*) FROM User WHERE ID=@ID";
+            cmd.Prepare();
+            cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(user.ID));
+
+            int exists = (int)cmd.ExecuteScalar();
+
+            cmd = _conn.CreateCommand();
+            if (exists > 0)
+            {
+                cmd.CommandText =
+                    "UPDATE USER SET Name=@name, Email=@email, UpdatedOn=@updatedon, UpdatedBy=@updatedby WHERE ID=@ID";
+                cmd.Prepare();
+                cmd.Parameters.AddWithValue("@name", user.Name);
+                cmd.Parameters.AddWithValue("@email", user.Email);
+                cmd.Parameters.AddWithValue("@updatedon", strNow);
+                cmd.Parameters.AddWithValue("updatedby", DatabaseGuidString(_currentUserId));
+                cmd.Parameters.AddWithValue("@ID", user.ID);
+            }
+            else
+            {
+                cmd.CommandText = @"INSERT INTO User(ID, Name, Email, CreatedOn, CreatedBy, UpdatedOn, UpdatedBy)
+                                    VALUES(@ID, @name, @email, @createdon, @createdby, @updatedon, @updatedby)";
+                cmd.Prepare();
+                cmd.Parameters.AddWithValue("@ID", user.ID);
+                cmd.Parameters.AddWithValue("@name", user.Name);
+                cmd.Parameters.AddWithValue("@email", user.Email);
+                cmd.Parameters.AddWithValue("@createdon", strNow);
+                cmd.Parameters.AddWithValue("@createdby", _currentUserId);
+                cmd.Parameters.AddWithValue("@updatedon", strNow);
+                cmd.Parameters.AddWithValue("updatedby", DatabaseGuidString(_currentUserId));
+            }
+
+            cmd.ExecuteNonQuery();
+        }
+
         public void CreatePatient(PatientInformation patient)
         {
             if (patient == null ) throw new ArgumentNullException(nameof(patient));
             if (string.IsNullOrWhiteSpace(patient.PatientKey)) throw new ArgumentNullException("patient.PatientKey");
+
+            string strNow = DatabaseDateString(DateTime.Now);
 
             var cmd = _conn.CreateCommand();
 
@@ -47,27 +124,15 @@ namespace TestSQLite
                 @"INSERT INTO Patients(ID, FirstName, MiddleName, LastName, CreatedOn, UpdatedOn, CreatedBy, UpdatedBy)
                   VALUES(@ID, @FirstName, @MiddleName, @LastName, @CreatedOn, @UpdatedOn, @CreatedBy, @UpdatedBy)";
 
-            int index = cmd.Parameters.Add(new SQLiteParameter(DbType.String, "@ID"));
-            cmd.Parameters.Add(new SQLiteParameter(DbType.String, "@FirstName"));
-            cmd.Parameters.Add(new SQLiteParameter(DbType.String, "@MiddleName"));
-            cmd.Parameters.Add(new SQLiteParameter(DbType.String, "@LastName"));
-            cmd.Parameters.Add(new SQLiteParameter(DbType.String, "@CreatedOn"));
-            cmd.Parameters.Add(new SQLiteParameter(DbType.String, "@UpdatedOn"));
-            cmd.Parameters.Add(new SQLiteParameter(DbType.String, "@CreatedBy"));
-            cmd.Parameters.Add(new SQLiteParameter(DbType.String, "@UpdatedBy"));
-
-            DateTime now = DateTime.Now;
-
-            string strNow = now.ToShortDateString() + " " + now.ToShortTimeString();
-
-            cmd.Parameters["@ID"].Value = patient.PatientKey;
-            cmd.Parameters["@FirstName"].Value = patient.Firstname;
-            cmd.Parameters["@MiddleName"].Value = patient.Middlename;
-            cmd.Parameters["@LastName"].Value = patient.Lastname;
-            cmd.Parameters["@CreatedOn"].Value = strNow;
-            cmd.Parameters["@UpdatedOn"].Value = strNow;
-            cmd.Parameters["@CreatedBy"].Value = _currentUserId;
-            cmd.Parameters["@UpdatedBy"].Value = _currentUserId;
+            cmd.Prepare();
+            cmd.Parameters.AddWithValue("@ID", patient.PatientKey);
+            cmd.Parameters.AddWithValue("@FirstName", patient.Firstname);
+            cmd.Parameters.AddWithValue("@MiddleName", patient.Middlename);
+            cmd.Parameters.AddWithValue("@LastName", patient.Lastname);
+            cmd.Parameters.AddWithValue("@CreatedOn", strNow);
+            cmd.Parameters.AddWithValue("@UpdatedOn", strNow);
+            cmd.Parameters.AddWithValue("@CreatedBy", _currentUserId);
+            cmd.Parameters.AddWithValue("@UpdatedBy", _currentUserId);
 
             cmd.ExecuteNonQuery();
         }

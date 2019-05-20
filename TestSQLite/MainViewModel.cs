@@ -20,9 +20,16 @@ namespace TestSQLite
 
         public void Process()
         {
+            CreateUsers();
+
             ReadJSON();
 
             WriteDomainObjectsToDb();
+        }
+
+        private void CreateUsers()
+        {
+
         }
 
         private void ReadJSON()

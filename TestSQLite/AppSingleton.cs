@@ -11,6 +11,6 @@ namespace TestSQLite
     {
         public static DatabaseService DatabaseService { get; set; }
 
-        public static string CurrentUserId { get; set; }
+        public static Guid CurrentUserId { get; set; }
     }
 }

@@ -15,9 +15,12 @@ namespace TestSQLite
     {
         public App()
         {
-            var databaseService = new DatabaseService(@"C:\\ProgramData\Kent Imaging\\KentImaging.db", "kmontgomery");
+            var databaseService = new DatabaseService(@"C:\\ProgramData\Kent Imaging\\KentImaging.db",
+                Guid.Parse("3FA88031-A392-4639-BDBF-BE2887EE31E1"));
 
             AppSingleton.DatabaseService = databaseService;
+
+            AppSingleton.CurrentUserId = Guid.Parse("3FA88031-A392-4639-BDBF-BE2887EE31E1");
         }
     }
 }
