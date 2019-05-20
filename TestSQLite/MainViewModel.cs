@@ -29,7 +29,8 @@ namespace TestSQLite
 
         private void CreateUsers()
         {
-
+            var user = AppSingleton.DatabaseService.CreateUser("keith", "keith@kentimaging.com", true);
+            user = AppSingleton.DatabaseService.CreateUser("pierre", "pierre@kentimaging.com", true);
         }
 
         private void ReadJSON()

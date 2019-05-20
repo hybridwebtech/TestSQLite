@@ -76,17 +76,19 @@ namespace TestSQLite
 
             var cmd = _conn.CreateCommand();
 
-            cmd.CommandText = "SELECT COUNT(*) FROM User WHERE ID=@ID";
+            cmd.CommandText = "SELECT COUNT(*) FROM Users WHERE ID=@ID";
             cmd.Prepare();
             cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(user.ID));
 
-            int exists = (int)cmd.ExecuteScalar();
+            var exists = (long)cmd.ExecuteScalar();
+
+            bool userExists = exists > 0;
 
             cmd = _conn.CreateCommand();
-            if (exists > 0)
+            if (userExists)
             {
                 cmd.CommandText =
-                    "UPDATE USER SET Name=@name, Email=@email, UpdatedOn=@updatedon, UpdatedBy=@updatedby WHERE ID=@ID";
+                    "UPDATE Users SET Name=@name, Email=@email, UpdatedOn=@updatedon, UpdatedBy=@updatedby WHERE ID=@ID";
                 cmd.Prepare();
                 cmd.Parameters.AddWithValue("@name", user.Name);
                 cmd.Parameters.AddWithValue("@email", user.Email);
@@ -96,19 +98,27 @@ namespace TestSQLite
             }
             else
             {
-                cmd.CommandText = @"INSERT INTO User(ID, Name, Email, CreatedOn, CreatedBy, UpdatedOn, UpdatedBy)
+                cmd.CommandText = @"INSERT INTO Users(ID, Name, Email, CreatedOn, CreatedBy, UpdatedOn, UpdatedBy)
                                     VALUES(@ID, @name, @email, @createdon, @createdby, @updatedon, @updatedby)";
                 cmd.Prepare();
-                cmd.Parameters.AddWithValue("@ID", user.ID);
+                cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(user.ID));
                 cmd.Parameters.AddWithValue("@name", user.Name);
                 cmd.Parameters.AddWithValue("@email", user.Email);
                 cmd.Parameters.AddWithValue("@createdon", strNow);
-                cmd.Parameters.AddWithValue("@createdby", _currentUserId);
+                cmd.Parameters.AddWithValue("@createdby", DatabaseGuidString(_currentUserId));
                 cmd.Parameters.AddWithValue("@updatedon", strNow);
                 cmd.Parameters.AddWithValue("updatedby", DatabaseGuidString(_currentUserId));
             }
 
-            cmd.ExecuteNonQuery();
+            try
+            {
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e);
+                throw;
+            }
         }
 
         public void CreatePatient(PatientInformation patient)
@@ -131,8 +141,8 @@ namespace TestSQLite
             cmd.Parameters.AddWithValue("@LastName", patient.Lastname);
             cmd.Parameters.AddWithValue("@CreatedOn", strNow);
             cmd.Parameters.AddWithValue("@UpdatedOn", strNow);
-            cmd.Parameters.AddWithValue("@CreatedBy", _currentUserId);
-            cmd.Parameters.AddWithValue("@UpdatedBy", _currentUserId);
+            cmd.Parameters.AddWithValue("@CreatedBy", DatabaseGuidString(_currentUserId));
+            cmd.Parameters.AddWithValue("@UpdatedBy", DatabaseGuidString(_currentUserId));
 
             cmd.ExecuteNonQuery();
         }
