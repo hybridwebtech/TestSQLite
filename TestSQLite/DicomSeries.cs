@@ -32,6 +32,8 @@ namespace KentInterface
 
         public static string SERIES_FILE_EXTENSION = "_seriesdesc.txt";
 
+        public Guid ID { get; set; }
+
         public String PatientID
         {
             get { return _seriesDescription.PatientID; }

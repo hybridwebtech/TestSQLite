@@ -17,6 +17,10 @@ namespace KentInterface
 
         public String StudyDirectory { get { return _studyDescriptionDetails.StudyDirectory; } }
 
+
+        public Guid ID { get; set; }
+
+
         public DicomStudy()
         {
             _studyDescriptionDetails = new DicomStudyDescription("");

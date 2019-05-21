@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DataEntities;
 using KentInterface;
@@ -58,7 +59,7 @@ namespace TestSQLite
                         patient.PatientKey = Guid.NewGuid().ToString();
                     }
 
-                    //AppSingleton.DatabaseService.CreatePatient(patient);
+                    AppSingleton.DatabaseService.CreatePatient(patient);
                 }
             }
         }
@@ -75,9 +76,39 @@ namespace TestSQLite
 
                     json = json.Replace("KentDbver1.1.0.12\r\n", "");
 
-                    var study = JsonConvert.DeserializeObject<DicomStudy>(json);
+                    bool isList = Regex.Matches(json, "SeriesInStudy").Count > 1;
 
-                    WriteStudyObjectToDb(study, patient);
+                    if (isList)
+                    {
+                        json = "[" + json + "]";
+                    }
+
+                    List<DicomStudy> studyList;// = new List<DicomStudy>();
+
+                    try
+                    {
+                        var study = JsonConvert.DeserializeObject<DicomStudy>(json);
+
+                        studyList = new List<DicomStudy>();
+
+                        studyList.Add(study);
+                    }
+                    catch (Exception e)
+                    {
+                        studyList = JsonConvert.DeserializeObject<List<DicomStudy>>(json);
+                    }
+
+                    foreach (var study in studyList)
+                    {
+                        if (study == null) continue;
+
+                        WriteStudyObjectToDb(study, patient);
+
+                        foreach (var series in study.SeriesInStudy)
+                        {
+                            WriteSeriesObjectToDb(series, study, patient);
+                        }
+                    }
                 }
             }
         }
@@ -87,6 +118,14 @@ namespace TestSQLite
             if (study != null && patient != null)
             {
                 AppSingleton.DatabaseService.SaveStudy(study, patient);
+            }
+        }
+
+        private void WriteSeriesObjectToDb(DicomSeries series, DicomStudy study, PatientInformation patient)
+        {
+            if (series != null && study != null && patient != null)
+            {
+                AppSingleton.DatabaseService.SaveSeries(series, study, patient);
             }
         }
     }

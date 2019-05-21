@@ -44,7 +44,7 @@ namespace TestSQLite
 
             string strYear  = dicomDate.Substring(0, 4);
             string strMonth = dicomDate.Substring(4, 2);
-            string strDay   = dicomDate.Substring(7, 2);
+            string strDay   = dicomDate.Substring(6, 2);
 
             int year;
             int month;
@@ -198,15 +198,45 @@ namespace TestSQLite
 
             var cmd = _conn.CreateCommand();
 
-            cmd.CommandText = "INSERT INTO Study(ID, StudyDate, StudyDescription, PatientID) VALUES ( @ID, @studydate, @studydescription, @patientID)";
+            cmd.CommandText = "INSERT INTO Study(ID, StudyDate, StudyDescription, PatientID) VALUES (@ID, @studydate, @studydescription, @patientID)";
             cmd.Prepare();
 
             Guid studyID = Guid.NewGuid();
+
+            study.ID = studyID;
 
             cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(studyID));
             cmd.Parameters.AddWithValue("@studydate", DatabaseDateString(GetDicomStudyDate(study)));
             cmd.Parameters.AddWithValue("@studydescription", study.StudyDescription);
             cmd.Parameters.AddWithValue("@patientID", patient.PatientKey);
+
+            cmd.ExecuteNonQuery();
+        }
+
+        public void SaveSeries(DicomSeries series, DicomStudy study, PatientInformation patient)
+        {
+            if (series == null) throw new ArgumentNullException(nameof(series));
+            if (study == null) throw new ArgumentNullException(nameof(study));
+            if (patient == null) throw new ArgumentNullException(nameof(patient));
+            if (string.IsNullOrWhiteSpace(patient.PatientKey)) throw new ArgumentNullException("patient.PatientKey");
+
+            string strNow = DatabaseDateString(DateTime.Now);
+
+            var cmd = _conn.CreateCommand();
+
+            cmd.CommandText =
+                "INSERT INTO Series(ID, SeriesDate, SeriesDescription, StudyID, DrapeUsedAtCapture) VALUES (@ID, @seriesdate, @seriesdescription, @studyID, @drapeusedatcapture)";
+            cmd.Prepare();
+
+            Guid seriesID = Guid.NewGuid();
+
+            series.ID = seriesID;
+
+            cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(series.ID));
+            cmd.Parameters.AddWithValue("@seriesdate", DatabaseDateString(ParseDicomDateToDateTime(series.SeriesDate)));
+            cmd.Parameters.AddWithValue("@seriesdescription", series.SeriesDescription);
+            cmd.Parameters.AddWithValue("@studyID", DatabaseGuidString(study.ID));
+            cmd.Parameters.AddWithValue("@drapeusedatcapture", series.DrapeUsedAtCapture ? 1 : 0);
 
             cmd.ExecuteNonQuery();
         }
