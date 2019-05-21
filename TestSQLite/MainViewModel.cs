@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -59,7 +60,7 @@ namespace TestSQLite
                         patient.PatientKey = Guid.NewGuid().ToString();
                     }
 
-                    AppSingleton.DatabaseService.CreatePatient(patient);
+                    //AppSingleton.DatabaseService.CreatePatient(patient);
                 }
             }
         }
@@ -106,7 +107,7 @@ namespace TestSQLite
 
                         foreach (var series in study.SeriesInStudy)
                         {
-                            WriteSeriesObjectToDb(series, study, patient);
+                            WriteSeriesObjectToDb(series, study, patient, studyPath);
                         }
                     }
                 }
@@ -117,15 +118,25 @@ namespace TestSQLite
         {
             if (study != null && patient != null)
             {
-                AppSingleton.DatabaseService.SaveStudy(study, patient);
+                //AppSingleton.DatabaseService.SaveStudy(study, patient);
             }
         }
 
-        private void WriteSeriesObjectToDb(DicomSeries series, DicomStudy study, PatientInformation patient)
+        private void WriteSeriesObjectToDb(DicomSeries series, DicomStudy study, PatientInformation patient, string studyFolderPath)
         {
-            if (series != null && study != null && patient != null)
+            if (series != null && study != null && patient != null && !string.IsNullOrWhiteSpace(studyFolderPath))
             {
-                AppSingleton.DatabaseService.SaveSeries(series, study, patient);
+                //AppSingleton.DatabaseService.SaveSeries(series, study, patient);
+
+                var seriesImageFiles =
+                    System.IO.Directory.EnumerateFiles(studyFolderPath, series.SeriesFileName + "*.*");
+
+                foreach (string filename in seriesImageFiles)
+                {
+                    if (filename.EndsWith(".txt")) continue;
+
+                    AppSingleton.DatabaseService.SaveSeriesImageFile(series, studyFolderPath, filename);
+                }
             }
         }
     }

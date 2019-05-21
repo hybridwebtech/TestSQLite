@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SQLite;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Shapes;
 using DataEntities;
 using KentInterface;
 
@@ -239,6 +241,61 @@ namespace TestSQLite
             cmd.Parameters.AddWithValue("@drapeusedatcapture", series.DrapeUsedAtCapture ? 1 : 0);
 
             cmd.ExecuteNonQuery();
+        }
+
+        public void SaveSeriesImageFile(DicomSeries series, string studyFolderPath, string imageFilename)
+        {
+
+            // byte[] fileContents = System.Convert.FromBase64String(uploadFile.Base64EncodedContents);
+            // strBase64EncodedContents = System.Convert.ToBase64String(content)
+
+            if (series == null) throw new ArgumentNullException(nameof(series));
+            if (string.IsNullOrWhiteSpace(studyFolderPath)) throw new ArgumentNullException(nameof(studyFolderPath));
+            if (string.IsNullOrWhiteSpace(imageFilename)) throw new ArgumentNullException(nameof(imageFilename));
+
+            string imageFilePath = System.IO.Path.Combine(studyFolderPath, imageFilename);
+            byte[] imageBytes = File.ReadAllBytes(imageFilePath);
+
+            string strBase64EncodedContents = System.Convert.ToBase64String(imageBytes);
+
+            string strBase64EncodedThumbnail = "";
+
+            if (imageFilename.EndsWith("png"))
+            {
+                strBase64EncodedThumbnail = Utilities.CreateBase64EncodedThumbnailFromFile(imageFilePath, 64, 64);
+            }
+
+            string strNow = DatabaseDateString(DateTime.Now);
+
+            var cmd = _conn.CreateCommand();
+
+            cmd.CommandText =
+                @"INSERT INTO SeriesImage(ID, ImageType, ThumbnailBase64, ImageBase64, OriginalFilename, SeriesID)
+                  VALUES (@ID, @imagetype, @thumbnailbase64, @imagebase64, @originalfilename, @seriesID)";
+            cmd.Prepare();
+
+            Guid imageID = Guid.NewGuid();
+
+            string imageType = TranslateImageFilenameToImageType(imageFilename);
+
+            cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(imageID));
+            cmd.Parameters.AddWithValue("@imagetype", imageType);
+            cmd.Parameters.AddWithValue("@thumbnailbase64", strBase64EncodedThumbnail);
+            cmd.Parameters.AddWithValue("@imagebase64", strBase64EncodedContents);
+            cmd.Parameters.AddWithValue("@drapeusedatcapture", series.DrapeUsedAtCapture ? 1 : 0);
+            cmd.Parameters.AddWithValue("@originalfilename", imageFilename);
+            cmd.Parameters.AddWithValue("@seriesID", DatabaseGuidString(series.ID));
+
+            cmd.ExecuteNonQuery();
+        }
+
+        private string TranslateImageFilenameToImageType(string imageFilename)
+        {
+            if (string.IsNullOrWhiteSpace(imageFilename)) throw new ArgumentNullException(nameof(imageFilename));
+
+            if (imageFilename.EndsWith(".png")) return "png";
+
+            return imageFilename[imageFilename.Length - 1].ToString();
         }
     }
 }

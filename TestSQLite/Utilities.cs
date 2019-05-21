@@ -24,8 +24,6 @@ namespace TestSQLite
 
             var thumbnailImage = image.GetThumbnailImage(thumbnailWidth, thumbnailHeight, () => true, IntPtr.Zero);
 
-            //var imgConverter = new ImageConverter();
-            //var imageBytes = (byte[])imgConverter.ConvertTo(thumbnailImage, typeof(byte[]));
             string base64Image = "";
             using (MemoryStream ms = new MemoryStream())
             {
