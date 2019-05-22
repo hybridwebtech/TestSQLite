@@ -9,7 +9,7 @@ namespace TestSQLite
 {
     public static class AppSingleton
     {
-        public static DatabaseService DatabaseService { get; set; }
+        public static IDatabaseService DatabaseService { get; set; }
 
         public static Guid CurrentUserId { get; set; }
     }

@@ -12,12 +12,12 @@ using KentInterface;
 
 namespace TestSQLite
 {
-    public class DatabaseService
+    public class SQLiteDatabaseService : IDatabaseService
     {
         private SQLiteConnection _conn;
         private Guid _currentUserId;
 
-        public DatabaseService(string connectionString, Guid currentUserId)
+        public SQLiteDatabaseService(string connectionString, Guid currentUserId)
         {
             if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
             if (currentUserId == Guid.Empty) throw new ArgumentNullException(nameof(currentUserId));
@@ -164,7 +164,7 @@ namespace TestSQLite
             }
         }
 
-        public void CreatePatient(PatientInformation patient)
+        public void SavePatient(PatientInformation patient)
         {
             if (patient == null ) throw new ArgumentNullException(nameof(patient));
             if (string.IsNullOrWhiteSpace(patient.PatientKey)) throw new ArgumentNullException("patient.PatientKey");
@@ -174,14 +174,18 @@ namespace TestSQLite
             var cmd = _conn.CreateCommand();
 
             cmd.CommandText =
-                @"INSERT INTO Patients(ID, FirstName, MiddleName, LastName, CreatedOn, UpdatedOn, CreatedBy, UpdatedBy)
-                  VALUES(@ID, @FirstName, @MiddleName, @LastName, @CreatedOn, @UpdatedOn, @CreatedBy, @UpdatedBy)";
+                @"INSERT INTO Patients(ID, FirstName, MiddleName, LastName, DateOfBirth, CreatedOn, UpdatedOn, CreatedBy, UpdatedBy)
+                  VALUES(@ID, @FirstName, @MiddleName, @LastName, @DateOfBirth, @CreatedOn, @UpdatedOn, @CreatedBy, @UpdatedBy)";
+
+            DateTime dateOfBirth;
+            DateTime.TryParse(patient.DateOfBirth, out dateOfBirth);
 
             cmd.Prepare();
             cmd.Parameters.AddWithValue("@ID", patient.PatientKey);
             cmd.Parameters.AddWithValue("@FirstName", patient.Firstname);
             cmd.Parameters.AddWithValue("@MiddleName", patient.Middlename);
             cmd.Parameters.AddWithValue("@LastName", patient.Lastname);
+            cmd.Parameters.AddWithValue("@DateOfBirth", dateOfBirth.ToShortDateString());
             cmd.Parameters.AddWithValue("@CreatedOn", strNow);
             cmd.Parameters.AddWithValue("@UpdatedOn", strNow);
             cmd.Parameters.AddWithValue("@CreatedBy", DatabaseGuidString(_currentUserId));
@@ -245,10 +249,6 @@ namespace TestSQLite
 
         public void SaveSeriesImageFile(DicomSeries series, string studyFolderPath, string imageFilename)
         {
-
-            // byte[] fileContents = System.Convert.FromBase64String(uploadFile.Base64EncodedContents);
-            // strBase64EncodedContents = System.Convert.ToBase64String(content)
-
             if (series == null) throw new ArgumentNullException(nameof(series));
             if (string.IsNullOrWhiteSpace(studyFolderPath)) throw new ArgumentNullException(nameof(studyFolderPath));
             if (string.IsNullOrWhiteSpace(imageFilename)) throw new ArgumentNullException(nameof(imageFilename));

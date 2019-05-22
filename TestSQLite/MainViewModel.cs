@@ -36,8 +36,8 @@ namespace TestSQLite
 
         private void CreateUsers()
         {
-            //var user = AppSingleton.DatabaseService.CreateUser("keith", "keith@kentimaging.com", true);
-            //user = AppSingleton.DatabaseService.CreateUser("pierre", "pierre@kentimaging.com", true);
+            //var user = AppSingleton.SQLiteDatabaseService.CreateUser("keith", "keith@kentimaging.com", true);
+            //user = AppSingleton.SQLiteDatabaseService.CreateUser("pierre", "pierre@kentimaging.com", true);
         }
 
         private void ReadPatientListJSON()
@@ -60,7 +60,7 @@ namespace TestSQLite
                         patient.PatientKey = Guid.NewGuid().ToString();
                     }
 
-                    //AppSingleton.DatabaseService.CreatePatient(patient);
+                    AppSingleton.DatabaseService.SavePatient(patient);
                 }
             }
         }
@@ -118,7 +118,7 @@ namespace TestSQLite
         {
             if (study != null && patient != null)
             {
-                //AppSingleton.DatabaseService.SaveStudy(study, patient);
+                AppSingleton.DatabaseService.SaveStudy(study, patient);
             }
         }
 
@@ -126,7 +126,7 @@ namespace TestSQLite
         {
             if (series != null && study != null && patient != null && !string.IsNullOrWhiteSpace(studyFolderPath))
             {
-                //AppSingleton.DatabaseService.SaveSeries(series, study, patient);
+                AppSingleton.DatabaseService.SaveSeries(series, study, patient);
 
                 var seriesImageFiles =
                     System.IO.Directory.EnumerateFiles(studyFolderPath, series.SeriesFileName + "*.*");

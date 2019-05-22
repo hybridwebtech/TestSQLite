@@ -85,6 +85,7 @@
     <Compile Include="DicomSeriesDescription.cs" />
     <Compile Include="DicomStudy.cs" />
     <Compile Include="DicomStudyDescription.cs" />
+    <Compile Include="IDatabaseService.cs" />
     <Compile Include="IDicomImage.cs" />
     <Compile Include="IDicomSeries.cs" />
     <Compile Include="IDicomStudy.cs" />
@@ -99,7 +100,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="AppSingleton.cs" />
-    <Compile Include="DatabaseService.cs" />
+    <Compile Include="SQLiteDatabaseService.cs" />
     <Compile Include="MainViewModel.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
