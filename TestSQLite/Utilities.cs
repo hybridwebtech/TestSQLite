@@ -34,5 +34,24 @@ namespace TestSQLite
 
             return base64Image;
         }
+
+        public static byte[] CreateThumbnailFromFile(string filename, int thumbnailHeight, int thumbnailWidth)
+        {
+            if (!File.Exists(filename)) throw new FileNotFoundException(filename);
+
+            if (thumbnailHeight < 0) throw new ArgumentOutOfRangeException(nameof(thumbnailHeight));
+
+            if (thumbnailWidth < 0) throw new ArgumentOutOfRangeException(nameof(thumbnailWidth));
+
+            var image = new Bitmap(filename);
+
+            var thumbnailImage = image.GetThumbnailImage(thumbnailWidth, thumbnailHeight, () => true, IntPtr.Zero);
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                thumbnailImage.Save(ms, ImageFormat.Png);
+                return ms.ToArray();
+            }
+        }
     }
 }

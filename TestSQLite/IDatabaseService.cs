@@ -18,7 +18,7 @@ namespace TestSQLite
 
         void SaveStudy(DicomStudy study, PatientInformation patient);
 
-        void SaveSeries(DicomSeries series, DicomStudy study, PatientInformation patient);
+        void SaveSeries(DicomSeries series, DicomStudy study, PatientInformation patient, string studyFolderPath);
 
         void SaveSeriesImageFile(DicomSeries series, string studyFolderPath, string imageFilename);
     }

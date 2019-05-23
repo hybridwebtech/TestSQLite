@@ -19,6 +19,7 @@ namespace KentInterface
 
 
         public Guid ID { get; set; }
+        public Guid PatientID { get; set; }
 
 
         public DicomStudy()

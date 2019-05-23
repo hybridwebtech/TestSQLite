@@ -36,6 +36,7 @@ namespace TestSQLite
             catch (Exception e)
             {
                 System.Diagnostics.Debug.WriteLine(e.Message);
+                System.Diagnostics.Debug.Assert(false, e.Message);
             }
         }
 
@@ -89,6 +90,20 @@ namespace TestSQLite
             return guid.ToString();
         }
 
+        private T GetColumnValue<T>(IDataReader reader, string columnName)
+        {
+            System.Diagnostics.Debug.Assert(reader != null);
+            System.Diagnostics.Debug.Assert(!string.IsNullOrWhiteSpace(columnName));
+
+            int columnIndex = reader.GetOrdinal(columnName);
+            if (columnIndex < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(columnName));
+            }
+
+            return reader.IsDBNull(columnIndex) ? default(T) : (T) reader.GetValue(columnIndex);
+        }
+
         public User CreateUser(string userName, string userEmail, bool immediateSave)
         {
             if (string.IsNullOrWhiteSpace(userName)) throw new ArgumentNullException(nameof(userName));
@@ -115,83 +130,309 @@ namespace TestSQLite
             if (user == null) throw  new ArgumentNullException(nameof(user));
             if (user.ID == Guid.Empty) throw new ArgumentOutOfRangeException("User.ID");
 
-            string strNow = DatabaseDateString(DateTime.Now);
-
-            var cmd = _conn.CreateCommand();
-
-            cmd.CommandText = "SELECT COUNT(*) FROM Users WHERE ID=@ID";
-            cmd.Prepare();
-            cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(user.ID));
-
-            var exists = (long)cmd.ExecuteScalar();
-
-            bool userExists = exists > 0;
-
-            cmd = _conn.CreateCommand();
-            if (userExists)
-            {
-                cmd.CommandText =
-                    "UPDATE Users SET Name=@name, Email=@email, UpdatedOn=@updatedon, UpdatedBy=@updatedby WHERE ID=@ID";
-                cmd.Prepare();
-                cmd.Parameters.AddWithValue("@name", user.Name);
-                cmd.Parameters.AddWithValue("@email", user.Email);
-                cmd.Parameters.AddWithValue("@updatedon", strNow);
-                cmd.Parameters.AddWithValue("updatedby", DatabaseGuidString(_currentUserId));
-                cmd.Parameters.AddWithValue("@ID", user.ID);
-            }
-            else
-            {
-                cmd.CommandText = @"INSERT INTO Users(ID, Name, Email, CreatedOn, CreatedBy, UpdatedOn, UpdatedBy)
-                                    VALUES(@ID, @name, @email, @createdon, @createdby, @updatedon, @updatedby)";
-                cmd.Prepare();
-                cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(user.ID));
-                cmd.Parameters.AddWithValue("@name", user.Name);
-                cmd.Parameters.AddWithValue("@email", user.Email);
-                cmd.Parameters.AddWithValue("@createdon", strNow);
-                cmd.Parameters.AddWithValue("@createdby", DatabaseGuidString(_currentUserId));
-                cmd.Parameters.AddWithValue("@updatedon", strNow);
-                cmd.Parameters.AddWithValue("updatedby", DatabaseGuidString(_currentUserId));
-            }
-
             try
             {
+                string strNow = DatabaseDateString(DateTime.Now);
+
+                var cmd = _conn.CreateCommand();
+
+                cmd.CommandText = "SELECT COUNT(*) FROM Users WHERE ID=@ID";
+                cmd.Prepare();
+                cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(user.ID));
+
+                var exists = (long) cmd.ExecuteScalar();
+
+                bool userExists = exists > 0;
+
+                cmd = _conn.CreateCommand();
+                if (userExists)
+                {
+                    cmd.CommandText =
+                        "UPDATE Users SET Name=@name, Email=@email, UpdatedOn=@updatedon, UpdatedBy=@updatedby WHERE ID=@ID";
+                    cmd.Prepare();
+                    cmd.Parameters.AddWithValue("@name", user.Name);
+                    cmd.Parameters.AddWithValue("@email", user.Email);
+                    cmd.Parameters.AddWithValue("@updatedon", strNow);
+                    cmd.Parameters.AddWithValue("updatedby", DatabaseGuidString(_currentUserId));
+                    cmd.Parameters.AddWithValue("@ID", user.ID);
+                }
+                else
+                {
+                    cmd.CommandText = @"INSERT INTO Users(ID, Name, Email, CreatedOn, CreatedBy, UpdatedOn, UpdatedBy)
+                                    VALUES(@ID, @name, @email, @createdon, @createdby, @updatedon, @updatedby)";
+                    cmd.Prepare();
+                    cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(user.ID));
+                    cmd.Parameters.AddWithValue("@name", user.Name);
+                    cmd.Parameters.AddWithValue("@email", user.Email);
+                    cmd.Parameters.AddWithValue("@createdon", strNow);
+                    cmd.Parameters.AddWithValue("@createdby", DatabaseGuidString(_currentUserId));
+                    cmd.Parameters.AddWithValue("@updatedon", strNow);
+                    cmd.Parameters.AddWithValue("updatedby", DatabaseGuidString(_currentUserId));
+                }
+
+
                 cmd.ExecuteNonQuery();
             }
             catch (Exception e)
             {
-                System.Diagnostics.Debug.WriteLine(e);
-                throw;
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                System.Diagnostics.Debug.Assert(false, e.Message);
             }
+        }
+
+        public PatientInformation CreatePatient(string ID, string firstName, string middleName, string lastName, string dateOfBirth,
+            string createdOn, string updatedOn, string createdBy, string updatedBy)
+        {
+            DateTime birthDate;
+            DateTime.TryParse(dateOfBirth, out birthDate);
+            return new PatientInformation()
+            {
+                PatientKey = ID,
+                Firstname = firstName,
+                Middlename = middleName,
+                Lastname = lastName,
+                DOB_Year = birthDate.Year.ToString(),
+                DOB_Month = birthDate.Month.ToString(),
+                DOB_Day = birthDate.Day.ToString(),
+            };
+        }
+
+        public List<PatientInformation> RetrievePatients()
+        {
+            List<PatientInformation> list = new List<PatientInformation>();
+
+            try
+            {
+                var cmd = _conn.CreateCommand();
+
+                cmd.CommandText =
+                    "SELECT ID, FirstName, MiddleName, LastName, DateOfBirth, CreatedOn, UpdatedOn, CreatedBy, UpdatedBy FROM Patients";
+                cmd.Prepare();
+
+                var reader = cmd.ExecuteReader();
+
+                string ID;
+                string firstName;
+                string middleName;
+                string lastName;
+                string dateOfBirth;
+                string createdOn;
+                string updatedOn;
+                string createdBy;
+                string updatedBy;
+
+                while (reader.Read())
+                {
+                    ID = GetColumnValue<string>(reader, "ID");
+                    firstName = GetColumnValue<string>(reader, "FirstName");
+                    middleName = GetColumnValue<string>(reader, "MiddleName");
+                    lastName = GetColumnValue<string>(reader, "LastName");
+                    dateOfBirth = GetColumnValue<string>(reader, "DateOfBirth");
+                    createdOn = GetColumnValue<string>(reader, "CreatedOn");
+                    updatedOn = GetColumnValue<string>(reader, "UpdatedOn");
+                    createdBy = GetColumnValue<string>(reader, "CreatedBy");
+                    updatedBy = GetColumnValue<string>(reader, "UpdatedBy");
+
+                    var patient = CreatePatient(ID, firstName, middleName, lastName, dateOfBirth, createdOn, updatedOn,
+                        createdBy, updatedBy);
+
+                    list.Add(patient);
+                }
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                System.Diagnostics.Debug.Assert(false, e.Message);
+            }
+
+            return list;
         }
 
         public void SavePatient(PatientInformation patient)
         {
-            if (patient == null ) throw new ArgumentNullException(nameof(patient));
+            if (patient == null) throw new ArgumentNullException(nameof(patient));
             if (string.IsNullOrWhiteSpace(patient.PatientKey)) throw new ArgumentNullException("patient.PatientKey");
 
-            string strNow = DatabaseDateString(DateTime.Now);
+            try
+            {
+                string strNow = DatabaseDateString(DateTime.Now);
 
-            var cmd = _conn.CreateCommand();
+                var cmd = _conn.CreateCommand();
 
-            cmd.CommandText =
-                @"INSERT INTO Patients(ID, FirstName, MiddleName, LastName, DateOfBirth, CreatedOn, UpdatedOn, CreatedBy, UpdatedBy)
+                cmd.CommandText =
+                    @"INSERT INTO Patients(ID, FirstName, MiddleName, LastName, DateOfBirth, CreatedOn, UpdatedOn, CreatedBy, UpdatedBy)
                   VALUES(@ID, @FirstName, @MiddleName, @LastName, @DateOfBirth, @CreatedOn, @UpdatedOn, @CreatedBy, @UpdatedBy)";
 
-            DateTime dateOfBirth;
-            DateTime.TryParse(patient.DateOfBirth, out dateOfBirth);
+                DateTime dateOfBirth;
+                DateTime.TryParse(patient.DateOfBirth, out dateOfBirth);
 
-            cmd.Prepare();
-            cmd.Parameters.AddWithValue("@ID", patient.PatientKey);
-            cmd.Parameters.AddWithValue("@FirstName", patient.Firstname);
-            cmd.Parameters.AddWithValue("@MiddleName", patient.Middlename);
-            cmd.Parameters.AddWithValue("@LastName", patient.Lastname);
-            cmd.Parameters.AddWithValue("@DateOfBirth", dateOfBirth.ToShortDateString());
-            cmd.Parameters.AddWithValue("@CreatedOn", strNow);
-            cmd.Parameters.AddWithValue("@UpdatedOn", strNow);
-            cmd.Parameters.AddWithValue("@CreatedBy", DatabaseGuidString(_currentUserId));
-            cmd.Parameters.AddWithValue("@UpdatedBy", DatabaseGuidString(_currentUserId));
+                cmd.Prepare();
+                cmd.Parameters.AddWithValue("@ID", patient.PatientKey);
+                cmd.Parameters.AddWithValue("@FirstName", patient.Firstname);
+                cmd.Parameters.AddWithValue("@MiddleName", patient.Middlename);
+                cmd.Parameters.AddWithValue("@LastName", patient.Lastname);
+                cmd.Parameters.AddWithValue("@DateOfBirth", dateOfBirth.ToShortDateString());
+                cmd.Parameters.AddWithValue("@CreatedOn", strNow);
+                cmd.Parameters.AddWithValue("@UpdatedOn", strNow);
+                cmd.Parameters.AddWithValue("@CreatedBy", DatabaseGuidString(_currentUserId));
+                cmd.Parameters.AddWithValue("@UpdatedBy", DatabaseGuidString(_currentUserId));
 
-            cmd.ExecuteNonQuery();
+                cmd.ExecuteNonQuery();
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                System.Diagnostics.Debug.Assert(false, e.Message);
+            }
+        }
+
+        public DicomStudy CreateStudy(string ID, string studyDate, string studyDescription, string patientId)
+        {
+            DateTime studyDateTime;
+            DateTime.TryParse(studyDate, out studyDateTime);
+            return new DicomStudy()
+            {
+                ID = Guid.Parse(ID),
+                StudyDate = studyDateTime.ToShortDateString(),
+                StudyDescription = studyDescription,
+                PatientID = Guid.Parse(patientId),
+            };
+        }
+
+        public List<DicomStudy> RetrievePatientStudyDetails(PatientInformation patient)
+        {
+            if (patient == null) throw new ArgumentNullException(nameof(patient));
+
+            List<DicomStudy> list = new List<DicomStudy>();
+            try
+            {
+                var cmd = _conn.CreateCommand();
+
+                cmd.CommandText =
+                    "SELECT ID, StudyDate, StudyDescription, PatientId FROM Study WHERE PatientId=@patientID";
+                cmd.Prepare();
+
+                cmd.Parameters.AddWithValue("@patientID", patient.PatientKey);
+
+                var reader = cmd.ExecuteReader();
+
+                string ID;
+                string studyDate;
+                string studyDescription;
+                string patientId;
+
+                while (reader.Read())
+                {
+                    ID = GetColumnValue<string>(reader, "ID");
+                    studyDate = GetColumnValue<string>(reader, "StudyDate");
+                    studyDescription = GetColumnValue<string>(reader, "StudyDescription");
+                    patientId = GetColumnValue<string>(reader, "PatientId");
+
+                    var study = CreateStudy(ID, studyDate, studyDescription, patientId);
+
+                    list.Add(study);
+                }
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                System.Diagnostics.Debug.Assert(false, e.Message);
+            }
+
+            return list;
+        }
+
+        public DicomSeries CreateSeries(string ID, string seriesDate, string seriesDescription, DicomStudy study, byte[] thumbnail)
+        {
+            DateTime seriesDateTime;
+            DateTime.TryParse(seriesDate, out seriesDateTime);
+            var series = new DicomSeries(study.PatientID.ToString(), study, null)
+            {
+                ID = Guid.Parse(ID),
+                SeriesDate = seriesDateTime.ToShortDateString(),
+                SeriesTime = seriesDateTime.ToShortTimeString(),
+                SeriesDescription = seriesDescription,
+            };
+
+            series.DicomSeriesDescription.Thumbnail = Convert.ToBase64String(thumbnail);
+
+            return series;
+        }
+
+        public List<DicomSeries> RetrieveStudySeriesDetails(DicomStudy study)
+        {
+            if (study == null) throw new ArgumentNullException(nameof(study));
+
+            List<DicomSeries> list = new List<DicomSeries>();
+            try
+            {
+                var cmd = _conn.CreateCommand();
+
+                cmd.CommandText =
+                    @"SELECT ID, SeriesDate, SeriesDescription, StudyID, Thumbnail FROM Series WHERE StudyID=@studyID";
+                cmd.Prepare();
+
+                cmd.Parameters.AddWithValue("@studyID", study.ID.ToString());
+
+                var reader = cmd.ExecuteReader();
+
+                string ID;
+                string seriesDate;
+                string seriesDescription;
+                string studyID;
+                byte[] thumbnail;
+
+                while (reader.Read())
+                {
+                    ID = GetColumnValue<string>(reader, "ID");
+                    seriesDate = GetColumnValue<string>(reader, "SeriesDate");
+                    seriesDescription = GetColumnValue<string>(reader, "SeriesDescription");
+                    studyID = GetColumnValue<string>(reader, "StudyID");
+                    thumbnail = GetColumnValue<byte[]>(reader, "Thumbnail");
+
+                    var series = CreateSeries(ID, seriesDate, seriesDescription, study, thumbnail);
+
+                    list.Add(series);
+                }
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                System.Diagnostics.Debug.Assert(false, e.Message);
+            }
+
+            return list;
+        }
+
+        public string RetrieveSeriesThumbnail(DicomSeries series)
+        {
+            if (series == null) throw new ArgumentNullException(nameof(series));
+
+            string thumbnail = "";
+            try
+            {
+                var cmd = _conn.CreateCommand();
+
+                cmd.CommandText =
+                    @"SELECT ThumbnailBase64 FROM SeriesImage WHERE SeriesID=@seriesID AND ThumbnailBase64 IS NOT NULL";
+                cmd.Prepare();
+
+                cmd.Parameters.AddWithValue("@seriesID", series.ID.ToString());
+
+                var reader = cmd.ExecuteReader();
+
+                if (reader.Read())
+                {
+                    thumbnail = GetColumnValue<string>(reader, "ThumbnailBase64");
+                }
+            }
+            catch (Exception e)
+            {
+                System.Diagnostics.Debug.WriteLine(e.Message);
+                System.Diagnostics.Debug.Assert(false, e.Message);
+            }
+
+            return thumbnail;
         }
 
         public void SaveStudy(DicomStudy study, PatientInformation patient)
@@ -219,7 +460,7 @@ namespace TestSQLite
             cmd.ExecuteNonQuery();
         }
 
-        public void SaveSeries(DicomSeries series, DicomStudy study, PatientInformation patient)
+        public void SaveSeries(DicomSeries series, DicomStudy study, PatientInformation patient, string studyFolderPath)
         {
             if (series == null) throw new ArgumentNullException(nameof(series));
             if (study == null) throw new ArgumentNullException(nameof(study));
@@ -228,10 +469,17 @@ namespace TestSQLite
 
             string strNow = DatabaseDateString(DateTime.Now);
 
+            var pngFileList =
+                System.IO.Directory.EnumerateFiles(studyFolderPath, series.SeriesFileName + "*.png").ToList();
+
+            string pngFile = pngFileList.Count == 1 ? pngFileList[0] : "";
+
+            byte[] thumbnail = Utilities.CreateThumbnailFromFile(pngFile, 64, 64);
+
             var cmd = _conn.CreateCommand();
 
             cmd.CommandText =
-                "INSERT INTO Series(ID, SeriesDate, SeriesDescription, StudyID, DrapeUsedAtCapture) VALUES (@ID, @seriesdate, @seriesdescription, @studyID, @drapeusedatcapture)";
+                "INSERT INTO Series(ID, SeriesDate, SeriesDescription, StudyID, DrapeUsedAtCapture, Thumbnail) VALUES (@ID, @seriesdate, @seriesdescription, @studyID, @drapeusedatcapture, @thumbnail)";
             cmd.Prepare();
 
             Guid seriesID = Guid.NewGuid();
@@ -243,6 +491,8 @@ namespace TestSQLite
             cmd.Parameters.AddWithValue("@seriesdescription", series.SeriesDescription);
             cmd.Parameters.AddWithValue("@studyID", DatabaseGuidString(study.ID));
             cmd.Parameters.AddWithValue("@drapeusedatcapture", series.DrapeUsedAtCapture ? 1 : 0);
+            cmd.Parameters.AddWithValue("@drapeusedatcapture", series.DrapeUsedAtCapture ? 1 : 0);
+            cmd.Parameters.Add("@thumbnail", DbType.Binary, 20).Value = thumbnail;
 
             cmd.ExecuteNonQuery();
         }
@@ -256,22 +506,22 @@ namespace TestSQLite
             string imageFilePath = System.IO.Path.Combine(studyFolderPath, imageFilename);
             byte[] imageBytes = File.ReadAllBytes(imageFilePath);
 
-            string strBase64EncodedContents = System.Convert.ToBase64String(imageBytes);
+            //string strBase64EncodedContents = System.Convert.ToBase64String(imageBytes);
 
-            string strBase64EncodedThumbnail = "";
+            //string strBase64EncodedThumbnail = "";
 
-            if (imageFilename.EndsWith("png"))
-            {
-                strBase64EncodedThumbnail = Utilities.CreateBase64EncodedThumbnailFromFile(imageFilePath, 64, 64);
-            }
+            //if (imageFilename.EndsWith("png"))
+            //{
+            //    strBase64EncodedThumbnail = Utilities.CreateBase64EncodedThumbnailFromFile(imageFilePath, 64, 64);
+            //}
 
             string strNow = DatabaseDateString(DateTime.Now);
 
             var cmd = _conn.CreateCommand();
 
             cmd.CommandText =
-                @"INSERT INTO SeriesImage(ID, ImageType, ThumbnailBase64, ImageBase64, OriginalFilename, SeriesID)
-                  VALUES (@ID, @imagetype, @thumbnailbase64, @imagebase64, @originalfilename, @seriesID)";
+                @"INSERT INTO SeriesImage(ID, ImageType, Image, OriginalFilename, SeriesID)
+                  VALUES (@ID, @imagetype, @image, @originalfilename, @seriesID)";
             cmd.Prepare();
 
             Guid imageID = Guid.NewGuid();
@@ -280,8 +530,7 @@ namespace TestSQLite
 
             cmd.Parameters.AddWithValue("@ID", DatabaseGuidString(imageID));
             cmd.Parameters.AddWithValue("@imagetype", imageType);
-            cmd.Parameters.AddWithValue("@thumbnailbase64", strBase64EncodedThumbnail);
-            cmd.Parameters.AddWithValue("@imagebase64", strBase64EncodedContents);
+            cmd.Parameters.Add("@image", DbType.Binary, 20).Value = imageBytes;
             cmd.Parameters.AddWithValue("@drapeusedatcapture", series.DrapeUsedAtCapture ? 1 : 0);
             cmd.Parameters.AddWithValue("@originalfilename", imageFilename);
             cmd.Parameters.AddWithValue("@seriesID", DatabaseGuidString(series.ID));
